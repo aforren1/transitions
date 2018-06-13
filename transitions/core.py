@@ -191,6 +191,7 @@ class Transition(object):
     Attributes:
         source (str): Source state of the transition.
         dest (str): Destination state of the transition.
+        trigger (str): The name of the method that will trigger the transition.
         prepare (list): Callbacks executed before conditions checks.
         conditions (list): Callbacks evaluated to determine if
             the transition should be executed.
@@ -204,7 +205,7 @@ class Transition(object):
     dynamic_methods = ['before', 'after', 'prepare']
 
     def __init__(self, source, dest, conditions=None, unless=None, before=None,
-                 after=None, prepare=None):
+                 after=None, prepare=None, trigger=None):
         """
         Args:
             source (str): The name of the source State.
@@ -220,9 +221,13 @@ class Transition(object):
                 transition.
             after (optional[str, callable or list]): callbacks to trigger after the transition.
             prepare (optional[str, callable or list]): callbacks to trigger before conditions are checked
+            trigger (str): The name of the method that will trigger the transition.
         """
+        if not trigger:
+            raise ValueError('Missing trigger from Transition creation (TODO rewrite)')
         self.source = source
         self.dest = dest
+        self.trigger = trigger
         self.prepare = [] if prepare is None else listify(prepare)
         self.before = [] if before is None else listify(before)
         self.after = [] if after is None else listify(after)
@@ -797,11 +802,11 @@ class Machine(object):
         states = set(args)
         return [t for (t, ev) in self.events.items() if any(state in ev.transitions for state in states)]
 
-    def add_transition(self, trigger, source, dest, conditions=None,
+    def add_transition(self, trigger, source=None, dest=None, conditions=None,
                        unless=None, before=None, after=None, prepare=None, **kwargs):
         """ Create a new Transition instance and add it to the internal list.
         Args:
-            trigger (string): The name of the method that will trigger the
+            trigger (string or Transition): The name of the method that will trigger the
                 transition. This will be attached to the currently specified
                 model (e.g., passing trigger='advance' will create a new
                 advance() method in the model that triggers the transition.)
@@ -827,23 +832,32 @@ class Machine(object):
             **kwargs: Additional arguments which can be passed to the created transition.
                 This is useful if you plan to extend Machine.Transition and require more parameters.
         """
-        if trigger not in self.events:
-            self.events[trigger] = self._create_event(trigger, self)
-            for model in self.models:
-                self._add_trigger_to_model(trigger, model)
-
-        if isinstance(source, string_types):
-            source = list(self.states.keys()) if source == self.wildcard_all else [source]
+        if isinstance(trigger, Transition):
+            if trigger.trigger not in self.events:
+                self.events[trigger.trigger] = self._create_event(trigger.trigger, self)
+                for model in self.models:
+                    self._add_trigger_to_model(trigger.trigger, model)
+            self.events[trigger.trigger].add_transition(trigger)
         else:
-            source = [s.name if self._has_state(s) else s for s in listify(source)]
+            if not source or not dest:
+                raise ValueError('Missing source/dest (TODO rewrite)')
+            if trigger not in self.events:
+                self.events[trigger] = self._create_event(trigger, self)
+                for model in self.models:
+                    self._add_trigger_to_model(trigger, model)
 
-        for state in source:
-            _dest = state if dest == self.wildcard_same else dest
-            if _dest and self._has_state(_dest):
-                _dest = _dest.name
-            _trans = self._create_transition(state, _dest, conditions, unless, before,
-                                             after, prepare, **kwargs)
-            self.events[trigger].add_transition(_trans)
+            if isinstance(source, string_types):
+                source = list(self.states.keys()) if source == self.wildcard_all else [source]
+            else:
+                source = [s.name if self._has_state(s) else s for s in listify(source)]
+
+            for state in source:
+                _dest = state if dest == self.wildcard_same else dest
+                if _dest and self._has_state(_dest):
+                    _dest = _dest.name
+                _trans = self._create_transition(state, _dest, conditions, unless, before,
+                                                after, prepare, trigger, **kwargs)
+                self.events[trigger].add_transition(_trans)
 
     def add_transitions(self, transitions):
         """ Add several transitions.
@@ -855,6 +869,8 @@ class Machine(object):
         for trans in listify(transitions):
             if isinstance(trans, list):
                 self.add_transition(*trans)
+            elif isinstance(trans, Transition):
+                self.add_transition(trans)
             else:
                 self.add_transition(**trans)
 
