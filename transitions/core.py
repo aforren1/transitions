@@ -224,7 +224,7 @@ class Transition(object):
             trigger (str): The name of the method that will trigger the transition.
         """
         if not trigger:
-            raise ValueError('Missing trigger from Transition creation (TODO rewrite)')
+            raise TypeError('__init__() missing required `trigger` keyword argument.')
         self.source = source
         self.dest = dest
         self.trigger = trigger
@@ -840,7 +840,9 @@ class Machine(object):
             self.events[trigger.trigger].add_transition(trigger)
         else:
             if not source or not dest:
-                raise ValueError('Missing source/dest (TODO rewrite)')
+                raise TypeError(""" `source` and `dest` must be specified 
+                                    if the first argument does not inherit from Transition.
+                                """)
             if trigger not in self.events:
                 self.events[trigger] = self._create_event(trigger, self)
                 for model in self.models:
