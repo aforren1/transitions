@@ -856,7 +856,7 @@ class Machine(object):
                 if _dest and self._has_state(_dest):
                     _dest = _dest.name
                 _trans = self._create_transition(state, _dest, conditions, unless, before,
-                                                after, prepare, trigger, **kwargs)
+                                                 after, prepare, trigger, **kwargs)
                 self.events[trigger].add_transition(_trans)
 
     def add_transitions(self, transitions):

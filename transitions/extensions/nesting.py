@@ -518,7 +518,7 @@ class HierarchicalMachine(Machine):
 
         event = EventData(self.get_state(model.state), Event('to', self), self,
                           model, args=args, kwargs=kwargs)
-        self._create_transition(model.state, state_name).execute(event)
+        self._create_transition(model.state, state_name, trigger='to').execute(event)
 
     # TODO: Remove in 0.7.0
     def to(self, model, state_name, *args, **kwargs):
