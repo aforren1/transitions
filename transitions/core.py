@@ -839,10 +839,8 @@ class Machine(object):
                     self._add_trigger_to_model(trigger.trigger, model)
             self.events[trigger.trigger].add_transition(trigger)
         else:
-            if not source or not dest:
-                raise TypeError(""" `source` and `dest` must be specified 
-                                    if the first argument does not inherit from Transition.
-                                """)
+            if not source:
+                raise TypeError('`source` must be specified if the first argument does not inherit from Transition.')
             if trigger not in self.events:
                 self.events[trigger] = self._create_event(trigger, self)
                 for model in self.models:
